@@ -52,8 +52,10 @@ int32_t ResolveOutputMode(ClientContext &context) {
 // Invokes the Rust entry point; throws on failure, returns the Rust-provided
 // UTF-8 payload on success (URL in mode=url, vega-lite JSON in mode=spec).
 string RunGgsqlQuery(ClientContext &context, const string &query, int32_t mode) {
-	BridgeCtx bctx;
-	bctx.outer = &context;
+	if (context.IsInterrupted()) {
+		throw InterruptException();
+	}
+	BridgeCtx bctx(context);
 	auto bridge = BuildReaderBridge(bctx);
 
 	ggsql_byte_buffer_t out;
@@ -68,6 +70,12 @@ string RunGgsqlQuery(ClientContext &context, const string &query, int32_t mode) 
 	}
 	ggsql_free_buffer(&out);
 
+	// The Rust/Arrow bridge transports errors as strings. Restore DuckDB's
+	// interruption type after releasing the FFI buffer, rather than reporting it
+	// as invalid input (or returning a result after cancellation).
+	if (context.IsInterrupted()) {
+		throw InterruptException();
+	}
 	if (rc != 0) {
 		throw InvalidInputException(payload.empty() ? "ggsql: unknown error" : payload);
 	}
