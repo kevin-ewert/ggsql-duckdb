@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.14...3.29)
 
 # Set extension name here
 set(TARGET_NAME ggsql)
@@ -57,6 +57,7 @@ file(GLOB_RECURSE GGSQL_RUST_SOURCES
   ${GGSQL_RUST_DIR}/assets/*.js
   ${GGSQL_RUST_DIR}/assets/*.html
   ${GGSQL_RUST_DIR}/Cargo.toml
+  ${GGSQL_RUST_DIR}/Cargo.lock
 )
 
 # tree-sitter-ggsql's build.rs re-runs `tree-sitter generate` from grammar.js
@@ -66,7 +67,7 @@ file(GLOB_RECURSE GGSQL_RUST_SOURCES
 add_custom_command(
   OUTPUT ${GGSQL_RUST_LIB}
   COMMAND ${CMAKE_COMMAND} -E env GGSQL_SKIP_GENERATE=1
-          ${CARGO_EXECUTABLE} build --release
+          ${CARGO_EXECUTABLE} build --release --locked
           --manifest-path ${GGSQL_RUST_DIR}/Cargo.toml
           --target-dir ${GGSQL_RUST_BUILD_DIR}
           ${GGSQL_CARGO_TARGET_ARGS}
