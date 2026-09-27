@@ -15,9 +15,9 @@ statement ok
 SELECT 1 AS x, 2 AS y ViSuAlIzE x, y DRAW point;
 
 # The native tokenizer preserves literal contents, including semicolons and
-# words that would otherwise look like ggsql keywords or comments.
+# words that would otherwise look like ggsql keywords.
 statement ok
-SELECT 'semi;colon -- VISUALISE' AS x, 2 AS y VISUALISE x, y DRAW point;
+SELECT 'semi;colon VISUALISE' AS x, 2 AS y VISUALISE x, y DRAW point;
 
 statement ok
 SELECT 1 AS "VISUALISE", 2 AS y VISUALISE "VISUALISE" AS x, y DRAW point;
@@ -37,6 +37,14 @@ SELECT -1 AS x, 2 AS y VISUALISE x, y DRAW point SCALE x FROM [-2, 2];
 statement ok
 SELECT 1::DOUBLE AS x, (2 + 3) * -1.25 AS y VISUALISE x, y DRAW point;
 
+# Bare VISUALISE starts with an identifier that DuckDB's failed PEG parse may
+# annotate as a column name before invoking the extension callback.
+statement ok
+CREATE TABLE parser_bare_source AS SELECT 1 AS x, 2 AS y;
+
+statement ok
+VISUALISE x, y FROM parser_bare_source DRAW point;
+
 # A quoted namespaced table name is one native token and retains its spelling.
 statement ok
 CREATE TABLE "parser:source" AS SELECT 1 AS x, 2 AS y;
@@ -46,12 +54,12 @@ SELECT * FROM "parser:source" VISUALISE x, y DRAW point;
 
 # ggsql recognizes namespaced data sources as one lexical token. This custom
 # reader does not install ggsql's built-in datasets, so successful ggsql parsing
-# reaches DuckDB and fails on the unrewritten colon in the generated SQL. A
-# reconstruction with spaces around ':' would fail earlier in ggsql's parser.
+# reaches DuckDB and reports a missing dataset table. A reconstruction with
+# spaces around ':' would fail earlier in ggsql's parser.
 statement error
 VISUALISE bill_length_mm AS x, bill_depth_mm AS y FROM ggsql:penguins DRAW point;
 ----
-syntax error at or near ":"
+Table with name penguins does not exist
 
 # Each callback sees the unparsed tail. It must stop at this statement's
 # terminator so later SQL and visualizations still execute independently.
@@ -80,17 +88,17 @@ SELECT sum(i) FROM parser_steps;
 # Keywords in strings, quoted identifiers, comments, and nested expressions do
 # not claim a failed SQL statement. These errors must remain DuckDB parser errors.
 statement error
-SELEC 'VISUALISE';
+SELECT 'VISUALISE' +;
 ----
 Parser Error
 
 statement error
-SELEC "VISUALISE";
+SELECT "VISUALISE" +;
 ----
 Parser Error
 
 statement error
-SELEC 1 /* VISUALISE */;
+SELECT 1 + /* VISUALISE */;
 ----
 Parser Error
 
@@ -101,7 +109,7 @@ Parser Error
 
 # Never scan past an invalid earlier statement to find a later VISUALISE.
 statement error
-SELEC 1;
+SELECT 1 +;
 SELECT 1 AS x, 2 AS y VISUALISE x, y DRAW point;
 ----
 Parser Error

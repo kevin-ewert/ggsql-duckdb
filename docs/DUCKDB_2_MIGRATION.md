@@ -42,6 +42,11 @@ spellings such as `//` line comments or backtick-quoted identifiers, use the
 scalar `ggsql('<source>')` entry point so the ggsql parser receives the source
 without token normalization.
 
+One upstream ggsql 0.5.2 edge case remains: a SQL string literal containing `--`
+(for example `'semi;colon -- VISUALISE'`) is rejected by the ggsql parser in both
+the direct and scalar entry points. The migration tests cover embedded
+semicolons and keywords separately from that unsupported comment-marker case.
+
 ## Build and validation
 
 Prerequisites: a C++ compiler, CMake 3.14 or newer, Make (optionally Ninja),
@@ -60,6 +65,25 @@ token boundaries, quoted text, dataset namespaces, and signed literals.
 CI builds the supported native platforms; WebAssembly remains excluded because
 the existing HTTP server, threading, and browser-launch dependencies require a
 native host.
+
+### Validation performed on 2026-09-26
+
+- Linux x86-64 release build completed for DuckDB, the shell, the test runner,
+  and the loadable extension using GCC 15 and Rust 1.98.1.
+- After the final parser fix, the rebuilt loadable binary passed all three SQL
+  suites: 63 assertions (19 core, 17 embedding, 27 parser). Each fresh runner
+  database checked that ggsql was unloaded, loaded the artifact by its full path,
+  and checked that it was loaded. Temporary copies replaced `require ggsql` with
+  explicit `LOAD` so these checks exercised the final dynamic library.
+- A separate dynamic-load smoke test passed seven assertions.
+- `cargo check --locked` passed; the dependency tree contains no second DuckDB.
+- The actual ggsql line-and-point specification compiled with the bundled Vega
+  stack and rendered to SVG. Its standalone HTML also rendered in a browser
+  without JavaScript warnings or errors.
+- C++/SQL/CMake formatting checks and `git diff --check` passed. GitHub's format
+  and clang-tidy checks passed during the migration; CI reruns on the final push.
+
+Native Windows/macOS builds and the final DuckDB 2.0 release remain unverified.
 
 ## Before release
 

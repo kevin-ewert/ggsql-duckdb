@@ -27,9 +27,10 @@ bool ContainsVisualiseKeyword(const vector<SimpleToken> &tokens, idx_t statement
 			}
 			continue;
 		}
-		// Quoted identifiers keep their delimiters in SimpleToken::text, so they
-		// cannot match either spelling. String literals and comments are not words.
-		if (depth == 0 && (token.type == TokenType::KEYWORD || token.type == TokenType::IDENTIFIER) &&
+		// Failed PEG parsing may have refined an identifier's type (for example,
+		// to COLUMN_NAME). Match its raw spelling regardless of that annotation.
+		// Quoted identifiers and literals retain their delimiters and cannot match.
+		if (depth == 0 && token.type != TokenType::COMMENT &&
 		    (StringUtil::CIEquals(token.text, "VISUALISE") || StringUtil::CIEquals(token.text, "VISUALIZE"))) {
 			return true;
 		}
