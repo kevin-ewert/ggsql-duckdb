@@ -5,8 +5,12 @@ A DuckDB extension that routes `VISUALISE`/`VISUALIZE` statements through the [g
 ## Building
 
 ```sh
+git clone --recurse-submodules https://github.com/posit-dev/ggsql-duckdb.git
+cd ggsql-duckdb
 make
 ```
+
+The build pulls in two git submodules (`duckdb` and `extension-ci-tools`), so a plain `git clone` leaves them empty and `make` fails with a missing `extension-ci-tools/makefiles/duckdb_extension.Makefile` error. In an existing clone, run `git submodule update --init --recursive` to fix that.
 
 Produces:
 
