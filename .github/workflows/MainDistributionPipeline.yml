@@ -22,8 +22,10 @@ jobs:
     name: Build extension binaries
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.5.6
     with:
-      duckdb_version: ${{ env.DUCKDB_VERSION }}
-      ci_tools_version: ${{ env.DUCKDB_VERSION }}
+      # env context is not allowed in reusable-workflow inputs — keep in sync
+      # with DUCKDB_VERSION above
+      duckdb_version: v1.5.6
+      ci_tools_version: v1.5.6
       extension_name: ggsql
       extra_toolchains: 'rust'
       exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'
@@ -32,8 +34,10 @@ jobs:
     name: Code Quality Check
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v1.5.6
     with:
-      duckdb_version: ${{ env.DUCKDB_VERSION }}
-      ci_tools_version: ${{ env.DUCKDB_VERSION }}
+      # env context is not allowed in reusable-workflow inputs — keep in sync
+      # with DUCKDB_VERSION above
+      duckdb_version: v1.5.6
+      ci_tools_version: v1.5.6
       extension_name: ggsql
       format_checks: 'format;tidy'
 
