@@ -5,8 +5,12 @@ A DuckDB extension that routes `VISUALISE`/`VISUALIZE` statements through the [g
 ## Building
 
 ```sh
+git clone --recurse-submodules https://github.com/posit-dev/ggsql-duckdb.git
+cd ggsql-duckdb
 make
 ```
+
+The build pulls in two git submodules (`duckdb` and `extension-ci-tools`), so a plain `git clone` leaves them empty and `make` fails with a missing `extension-ci-tools/makefiles/duckdb_extension.Makefile` error. In an existing clone, run `git submodule update --init --recursive` to fix that.
 
 Produces:
 
@@ -34,7 +38,7 @@ D
 
 **Scalar function — pass ggsql as a string:**
 ```
-D SELECT ggsql('SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line');
+D SELECT ggsql('SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line');
 ```
 
 Both forms open the default browser on the served URL. Set `GGSQL_NO_OPEN_BROWSER=1` in the environment to suppress the browser open (useful for tests and headless runs).
@@ -61,36 +65,36 @@ The native writers (`svg`/`pdf`/`hep`) — and the `html` and browser display mo
 
 ```sql
 SET ggsql_writer_options = 'width=800;height=600';
-SELECT ggsql_save('SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line', 'plot.svg');
-SELECT ggsql_save('SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line', 'plot.pdf');
+SELECT ggsql_save('SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line', 'plot.svg');
+SELECT ggsql_save('SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line', 'plot.pdf');
 ```
 
 ```sql
 -- default: just see the plot, no shell output
-SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line;
+SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line;
 
 -- get the URL back
 SET ggsql_output = 'url';
-SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line;
+SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line;
 
 -- get the raw spec
 SET ggsql_output = 'spec';
-SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line;
+SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line;
 -- → { "$schema": "...", "data": {...}, "mark": "line", ... }
 
 -- write a self-contained HTML file to disk
 SET ggsql_output = 'html';
-COPY (SELECT ggsql('SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line')) TO 'plot.html';
+COPY (SELECT ggsql('SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line')) TO 'plot.html';
 
 -- render natively to SVG, sized via writer options
 SET ggsql_output = 'svg';
 SET ggsql_writer_options = 'width=800;height=600';
-SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line;
+SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line;
 
 -- get a PDF back as BLOB (use the table form, which types the column as BLOB)
 SET ggsql_output = 'pdf';
 SET ggsql_writer_options = '';
-SELECT plot FROM ggsql_run('SELECT * FROM range(10) t(x) VISUALISE x, x*x AS y DRAW line');
+SELECT plot FROM ggsql_run('SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line');
 
 RESET ggsql_output;  -- back to silent
 ```

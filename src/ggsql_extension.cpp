@@ -7,25 +7,59 @@
 #include "duckdb.hpp"
 #include "duckdb/function/scalar_function.hpp"
 #include "duckdb/main/config.hpp"
+#include "duckdb/parser/parsed_data/create_scalar_function_info.hpp"
+#include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/parser/parser_extension.hpp"
 
 namespace duckdb {
 
 static void LoadInternal(ExtensionLoader &loader) {
 	// Public scalar form: SELECT ggsql('<ggsql query>')
-	ScalarFunction ggsql_scalar("ggsql", {LogicalType::VARCHAR}, LogicalType::VARCHAR, GgsqlScalarFun);
-	loader.RegisterFunction(ggsql_scalar);
+	CreateScalarFunctionInfo ggsql_info(
+	    ScalarFunction("ggsql", {LogicalType::VARCHAR}, LogicalType::VARCHAR, GgsqlScalarFun));
+	// The bare RegisterFunction overload sets ALTER_ON_CONFLICT internally; match it.
+	ggsql_info.on_conflict = OnCreateConflict::ALTER_ON_CONFLICT;
+	FunctionDescription ggsql_desc;
+	ggsql_desc.parameter_names = {"query"};
+	ggsql_desc.description =
+	    "Executes a ggsql query (SQL plus VISUALISE/DRAW clauses) and returns the plot in the format selected by "
+	    "the ggsql_output setting (browser URL, vega-lite spec, HTML, or SVG).";
+	ggsql_desc.examples = {"ggsql('SELECT range AS x, range*range AS y FROM range(10) VISUALISE x, y DRAW line')"};
+	ggsql_desc.categories = {"plotting"};
+	ggsql_info.descriptions.push_back(std::move(ggsql_desc));
+	loader.RegisterFunction(std::move(ggsql_info));
 
 	// Save form: SELECT ggsql_save('<query>', 'plot.svg') — the writer is
 	// inferred from the file extension and the payload written to disk.
-	ScalarFunction ggsql_save_scalar("ggsql_save", {LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::VARCHAR,
-	                                 GgsqlSaveFun);
-	loader.RegisterFunction(ggsql_save_scalar);
+	CreateScalarFunctionInfo ggsql_save_info(
+	    ScalarFunction("ggsql_save", {LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::VARCHAR, GgsqlSaveFun));
+	ggsql_save_info.on_conflict = OnCreateConflict::ALTER_ON_CONFLICT;
+	FunctionDescription ggsql_save_desc;
+	ggsql_save_desc.parameter_names = {"query", "path"};
+	ggsql_save_desc.description =
+	    "Renders a ggsql query straight to a file; the writer is inferred from the file extension "
+	    "(.svg, .pdf, .hep, .html, .json) and the output path is returned.";
+	ggsql_save_desc.examples = {
+	    "ggsql_save('SELECT range AS x FROM range(10) VISUALISE x DRAW line', 'plot.svg')"};
+	ggsql_save_desc.categories = {"plotting"};
+	ggsql_save_info.descriptions.push_back(std::move(ggsql_save_desc));
+	loader.RegisterFunction(std::move(ggsql_save_info));
 
 	// Table-function form, also used by the parser extension's plan. Registered
 	// standalone so binary output modes (pdf/hep) are reachable with their
 	// proper BLOB return type.
-	loader.RegisterFunction(GgsqlRunTableFunction());
+	CreateTableFunctionInfo ggsql_run_info {GgsqlRunTableFunction()};
+	ggsql_run_info.on_conflict = OnCreateConflict::ALTER_ON_CONFLICT;
+	FunctionDescription ggsql_run_desc;
+	ggsql_run_desc.parameter_names = {"query"};
+	ggsql_run_desc.description =
+	    "Executes a ggsql query and returns the plot as a one-row table; used for binary output modes "
+	    "('pdf', 'hep') where the result column is typed as BLOB.";
+	ggsql_run_desc.examples = {
+	    "SELECT plot FROM ggsql_run('SELECT range AS x FROM range(10) VISUALISE x DRAW line')"};
+	ggsql_run_desc.categories = {"plotting"};
+	ggsql_run_info.descriptions.push_back(std::move(ggsql_run_desc));
+	loader.RegisterFunction(std::move(ggsql_run_info));
 
 	// Primary surface: intercept any statement containing VISUALISE/VISUALIZE at the
 	// top level and route it through the same Rust entry point.
